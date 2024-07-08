@@ -12,18 +12,20 @@ Win at all costs!
 Player 1: 
 - left: A
 - right: D
-- guard: S
-- hadouken: W
+- punch: W
+- hadouken: S
+- if you see a hadouken coming towards you, press W to deflect
 
 Player 2:
 - left: J
 - right: L
-- guard: K
-- hadouken: I
+- punch: I
+- hadouken: K
+- if you see a hadouken coming towards you, press I to deflect
 */
 
 const p1_health = "v";
-const p2_health = "b";
+const p2_health = "y";
 
 const p1 = "d";
 const p1punch = "f"
@@ -38,8 +40,12 @@ const p2hurt = "p";
 const ground = 'g';
 const hadouken_p1 = "z"
 const hadouken_impact_p1 = 'x';
+const hadouken_p1_deflected = "c"
+const hadouken_impact_p1_deflected = 'r';
 const hadouken_p2 = "m"
 const hadouken_impact_p2 = 'n';
+const hadouken_p2_deflected = "b"
+const hadouken_impact_p2_deflected = 't';
 
 setLegend(
   [ p1_health, bitmap`
@@ -263,6 +269,7 @@ setLegend(
 0000000000000000
 0000000000000000
 0000000000000000`],
+  
   [ hadouken_p1, bitmap`
 ................
 ................
@@ -297,7 +304,75 @@ setLegend(
 ................
 ................
 ................`],
+  [ hadouken_p1_deflected, bitmap`
+................
+................
+.....3333.......
+....3388833.....
+....38..8833....
+....8....38.....
+....38..8833....
+....3388833.....
+.....3333.......
+................
+................
+................
+................
+................
+................
+................`],
+  [ hadouken_impact_p1_deflected, bitmap`
+................
+................
+......3.........
+....8.83..3.....
+.....3.33.......
+....3.88.3......
+.....33.3.......
+......38........
+....3..3.8......
+................
+................
+................
+................
+................
+................
+................`],
   [ hadouken_p2, bitmap`
+................
+................
+.......5555.....
+.....5577755....
+....5577..75....
+.....75....7....
+....5577..75....
+.....5577755....
+.......5555.....
+................
+................
+................
+................
+................
+................
+................`],
+  [ hadouken_impact_p2, bitmap`
+................
+................
+.........5......
+.....5..57.7....
+.......55.5.....
+......5.77.5....
+.......5.55.....
+........75......
+......7.5..5....
+................
+................
+................
+................
+................
+................
+................`],
+  [ hadouken_p2_deflected, bitmap`
 ................
 ................
 .....5555.......
@@ -314,7 +389,7 @@ setLegend(
 ................
 ................
 ................`],
-  [ hadouken_impact_p2, bitmap`
+  [ hadouken_impact_p2_deflected, bitmap`
 ................
 ................
 ......5.........
@@ -338,7 +413,7 @@ setSolids([p1, p1punch, p1guard, p1hadouken, p1hurt, p2, p2punch, p2guard, p2had
 let level = 0
 const levels = [
   map`
-vvv........bbb
+vvv........yyy
 ..............
 ..............
 ..............
@@ -348,15 +423,22 @@ gggggggggggggg
 gggggggggggggg`
 ]
 
-// player variables
+var y = 5
+
+// player 1 variables
 var p1_x = 4
-var p1_y = 5
+// states: d --> disabled, i --> idle, m --> move, h --> hurt, a --> attacking
+var p1State = "d"
+
+// player 2 variables
 var p2_x = 9
-var p2_y = 5
+var p2State = "d"
 
 setMap(levels[level])
 
 function init() {
+  p1State = "i";
+  p2State = "i";
   addText("FIGHT!", {
     x: 7,
     y: 3,
@@ -364,33 +446,84 @@ function init() {
   });
 }
 
-init()
-
-
-setPushables({
-  [p1]: []
-})
-
-// P1 inputs
-onInput("d", () => {
-  getFirst(p1).x += 1
-  if (p1_x != 13) {
-    p1_x += 1
+function countdown() {
+  addText(String(3), {
+    x: 9,
+    y: 3,
+    color: color`0`
+  });
+  for (let i=2; i > 0; i--) {
+    setTimeout(() => {
+      clearText();
+    }, 1000*(3-i)-500);
+    setTimeout(() => {
+      addText(String(i), {
+        x: 9,
+        y: 3,
+        color: color`0`
+      });
+    }, 1000*(3-i));
   }
-});
-onInput("a", () => {
-  getFirst(p1).x -= 1
-  if (p1_x != 0) {
-    p1_x -= 1
-  }
-});
-onInput("w", () => {
-  clearTile(p1_x, p1_y);
-  addSprite(p1_x, p1_y, "f");
   setTimeout(() => {
-    clearTile(p1_x, p1_y);
-    addSprite(p1_x, p1_y, "d");
-  }, 200);
+    clearText()
+  }, 2500);
+  setTimeout(() => {
+    init()
+  }, 3000);
+}
+
+countdown()
+
+async function p1Projectile(right=true) {
+  if (right) {
+    
+  }
+}
+
+// P1: move right
+onInput("d", () => {
+  if (p1State == "i") {
+    getFirst(p1).x += 1
+    // if p1 is not in front of p2
+    if (p1_x < p2_x - 1) {
+      p1_x += 1
+    }
+  }
+});
+
+// P1: move left
+onInput("a", () => {
+  if (p1State == "i") {
+    getFirst(p1).x -= 1
+    // if p1 is within game boundaries
+    if (p1_x != 0) {
+      p1_x -= 1
+    }
+  }
+});
+
+// P1: punch
+onInput("w", () => {
+  if (p1State == "i") {
+    p1State = "a"
+    getFirst(p1).type = p1punch
+    setTimeout(() => {
+      getFirst(p1punch).type = p1
+      p1State = "i"
+    }, 200);
+  }
+});
+
+// P1: hadouken
+onInput("s", () => {
+  if (p1State == "i") {
+    p1State = "a"
+    getFirst(p1).type = p1hadouken
+    setTimeout(() => {
+      getFirst(p1hadouken).type = p1
+      p1State = "i"
+    }, 480);
+  }
 });
 
 // P2 inputs
