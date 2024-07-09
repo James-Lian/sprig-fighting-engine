@@ -307,13 +307,13 @@ setLegend(
   [ hadouken_p2, bitmap`
 ................
 ................
-.......5555.....
-.....5577755....
-....5577..75....
-.....75....7....
-....5577..75....
-.....5577755....
-.......5555.....
+.....5555.......
+....5577755.....
+....57..7755....
+....7....57.....
+....57..7755....
+....5577755.....
+.....5555.......
 ................
 ................
 ................
@@ -324,13 +324,13 @@ setLegend(
   [ hadouken_p2_deflected, bitmap`
 ................
 ................
-.....5555.......
-....5577755.....
-....57..7755....
-....7....57.....
-....57..7755....
-....5577755.....
-.....5555.......
+.......5555.....
+.....5577755....
+....5577..75....
+.....75....7....
+....5577..75....
+.....5577755....
+.......5555.....
 ................
 ................
 ................
@@ -359,7 +359,7 @@ var y = 5;
 
 // player 1 variables
 var p1_x = 4;
-// states: d --> disabled, i --> idle, m --> move, h --> hurt, a --> attacking
+// states: d --> disabled, i --> idle, h --> hurt, a --> attacking
 var p1State = "d";
 var p1Health = 6;
 var p1HadoukenExists = false;
@@ -412,9 +412,12 @@ function countdown() {
 countdown()
 
 function damaged(player1) {
-  if (player1 == true && p1State == "i") {
-    p1Health -= 1;
-    clearTile(p1Health, 0);
+  // if both players attack at the same time, there will be a 'clash' or a 'parry' - neither player will receive damage, but they will both be knocked back
+  if (player1 == true && (p1State == "i" || p2State == "a")) {
+    if (p1State == "i") {
+      p1Health -= 1;
+      clearTile(p1Health, 0);
+    }
 
     p1State = "h";
     if (p1_x > 0) {
@@ -432,10 +435,12 @@ function damaged(player1) {
       getFirst(p1hurt).type = p1;
     }, 200);
   }
-  else if (player1 == false && p2State == "i") {
-    p2Health -= 1;
-    clearTile(13-p2Health, 0);
-
+  else if (player1 == false && (p2State == "i" || p2State == "a")) {
+    if (p2State == "i") {
+      p2Health -= 1;
+      clearTile(13-p2Health, 0);
+    }
+    
     p2State = "h";
     if (p2_x < 13) {
       p2_x += 1;
@@ -455,36 +460,80 @@ function damaged(player1) {
 }
 
 async function spawnHadouken(player1, deflected=false) {
-  if (player1 == true) {
-    if (deflected == false) {
-      addSprite(p1_x + 1, y, hadouken_p1);
-      var hit = false;
-      while (hit != true) {
-        await new Promise(resolve => setTimeout(resolve, 180));
-        getFirst(hadouken_p1).x += 1;
-        for (i in getTile(getFirst(hadouken_p1).x, y)) {
-          let obj = getTile(getFirst(hadouken_p1).x, y)[i]
-          if (obj["_type"] == "m") { // if the hadouken hit another hadouken
-            hit = true;
-            getFirst(hadouken_p1).remove();
-            break;
-          }
-          else if (obj["_type"] == "j" || obj["_type"] == "i") { // it hit the player
-            hit = true;
-            damaged(false);
-            getFirst(hadouken_p1).remove();
-            break;
-          }
-        }
-      }
-      p1HadoukenExists = false
-    }
-    else {
-      
-    }
+  var hadouken;
+  var direction = 1;
+  if (player1 == true && deflected == false) {
+    addSprite(p1_x + 1, y, hadouken_p1);
+    hadouken = hadouken_p1;
   }
-  else {
-    
+  else if (player1 == true && deflected == true) {
+    addSprite(p2_x - 1, y, hadouken_p1_deflected);
+    hadouken = hadouken_p1_deflected;
+    direction = -1;
+  }
+  else if (player1 == false && deflected == false) {
+    addSprite(p2_x - 1, y, hadouken_p2);
+    hadouken = hadouken_p2;
+    direction = -1;
+  }
+  else if (player1 == false && deflected == true) {
+    addSprite(p1_x + 1, y, hadouken_p2_deflected);
+    hadouken = hadouken_p2_deflected;
+  }
+  var hit = false;
+  while (hit != true) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    if (getFirst(hadouken).x == 0 || getFirst(hadouken).x == 13) {
+      hit = true;
+      getFirst(hadouken).remove()
+      
+      if (player1 == true){
+        p1HadoukenExists = false
+      }
+      else {
+        p2HadoukenExists = false
+      }
+      break;
+    }
+    getFirst(hadouken).x += 1 * direction;
+    for (i in getTile(getFirst(hadouken).x, y)) {
+      let obj = getTile(getFirst(hadouken).x, y)[i]
+      // player1's hadouken hit player2
+      if (obj["_type"] == "j") { 
+        hit = true;
+        damaged(false);
+        getFirst(hadouken).remove();
+
+        if (player1 == true){
+          p1HadoukenExists = false
+        }
+        else {
+          p2HadoukenExists = false
+        }
+        break;
+      }
+      // player2's hadouken hit player1
+      else if (obj["_type"] == "d") { 
+        hit = true;
+        damaged(true);
+        getFirst(hadouken).remove();
+
+        if (player1 == true){
+          p1HadoukenExists = false
+        }
+        else {
+          p2HadoukenExists = false
+        }
+        break;
+      }
+      // player1 or player2 deflected!
+      else if (obj["_type"] == "s" || obj["_type"] == "k") {
+        hit = true;
+        getFirst(hadouken).remove();
+        spawnHadouken(player1, !deflected)
+        break;
+      }
+    }
   }
 }
 
@@ -497,7 +546,6 @@ onInput("d", () => {
       p1_x += 1;
     }
   }
-  console.log(p1_x, p2_x)
 });
 
 // P1: move left
@@ -509,21 +557,30 @@ onInput("a", () => {
       p1_x -= 1;
     }
   }
-  console.log(p1_x, p2_x)
 });
 
-// P1: punch
+// P1: punch or guard
 onInput("w", () => {
   if (p1State == "i") {
     p1State = "a";
-    getFirst(p1).type = p1punch;
-    if (p2_x == p1_x + 1) {
-      damaged(false);
+
+    if (p1HadoukenExists == true || p2HadoukenExists == true) {
+      getFirst(p1).type = p1guard;
+      setTimeout(() => {
+        getFirst(p1guard).type = p1;
+        p1State = "i";
+      }, 120);
     }
-    setTimeout(() => {
-      getFirst(p1punch).type = p1;
-      p1State = "i";
-    }, 200);
+    else {
+      getFirst(p1).type = p1punch;
+      if (p2_x == p1_x + 1) {
+        damaged(false);
+      }
+      setTimeout(() => {
+        getFirst(p1punch).type = p1;
+        p1State = "i";
+      }, 200);
+    }
   }
 });
 
@@ -543,34 +600,87 @@ onInput("s", () => {
 
 // P2: move left
 onInput("j", () => {
-  getFirst(p2).x -= 1;
-  console.log(p1_x, p2_x)
-})
+  if (p2State == "i") {
+    getFirst(p2).x -= 1;
+    // if p2 is not in front of p1
+    if (p2_x > p1_x + 1) {
+      p2_x -= 1;
+    }
+  }
+});
 
 // P2: move right
 onInput("l", () => {
-  getFirst(p2).x += 1;
-  console.log(p1_x, p2_x)
-})
+  if (p2State == "i") {
+    getFirst(p2).x += 1;
+    // if p2 is not in front of p1
+    if (p2_x != 13) {
+      p2_x += 1;
+    }
+  }
+});
+
+// P2: punch
+onInput("i", () => {
+  if (p2State == "i") {
+    p2State = "a";
+
+    if (p1HadoukenExists == true || p2HadoukenExists == true) {
+      getFirst(p2).type = p2guard;
+      setTimeout(() => {
+        getFirst(p2guard).type = p2;
+        p2State = "i";
+      }, 120);
+    }
+    else {
+      getFirst(p2).type = p2punch;
+      if (p1_x == p2_x - 1) {
+        damaged(true);
+      }
+      setTimeout(() => {
+        getFirst(p2punch).type = p2;
+        p2State = "i"
+      }, 200);
+    }
+  }
+});
+
+// P2: hadouken
+onInput("k", () => {
+  if (p2State == "i" && p2HadoukenExists == false) {
+    p2State = "a";
+    p2HadoukenExists = true;
+    getFirst(p2).type = p2hadouken;
+    spawnHadouken(false);
+    setTimeout(() => {
+      getFirst(p2hadouken).type = p2;
+      p2State = "i";
+    }, 480);
+  }
+});
 
 afterInput(() => {
   if (p1Health == 0) {
-    p1State = "d";
-    p2State = "d";
+    setTimeout(() => {
+      p1State = "d";
+      p2State = "d";
+    }, 500);
 
     clearText()
-    addText("P1 WINS!", {
+    addText("P2 WINS!", {
       x: 6,
       y: 3,
       color: color`0`
     });
   }
   else if (p2Health == 0) {
-    p1State = "d";
-    p2State = "d";
+    setTimeout(() => {
+      p1State = "d";
+      p2State = "d";
+    }, 500);
 
     clearText()
-    addText("P2 WINS!", {
+    addText("P1 WINS!", {
       x: 6,
       y: 3,
       color: color`0`
