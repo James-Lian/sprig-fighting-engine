@@ -3,3 +3,4 @@ This was a short Javascript project made in Hack Club's Sprig Editor, and inspir
 Play with 2 players! Move with `A` and `D` (P1), or `J` and `L` (P2)! Punch with `W` (P1) or `I` (P2)!  
 Launch a hadouken with `S` (P1) or `K` (P2)! See a hadouken coming your way? Deflect it with `W` (P1) or `I` (P2)!  
 Want to play? Go to this [Sprig link](https://sprig.hackclub.com/share/zulG5fhlKKfyBdcIBR5m) and knock your friends out! 🤜👊 (figuratively, of course)
+![image](https://github.com/user-attachments/assets/58a5fc72-b298-4050-a810-731ce3c6f702)
